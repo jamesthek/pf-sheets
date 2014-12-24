@@ -1,0 +1,217 @@
+<html>
+<head>
+<title>Attack Calculator</title>
+<script type="text/javascript">
+var tbl;
+var tbdy;
+var count;
+var enabled= [];
+function tableCreate() {
+	var tbl=document.getElementById('bonusTable')
+	tbdy=document.createElement('tbody');
+	tbl.appendChild(tbdy);
+
+	count=1;
+	//Make headings
+	makeBlankRow(['', 'Attack', 'Damage', 'Critical Damage', 'x3 Critical Damage', 'Enabled'], 'Header')
+	
+	makeRow('Base attack', 7, 0);
+	makeRow('Strength [2 handed]', 7, 10);
+	makeRow('Bardic Inspire Courage', 2, 2);
+	makeRow('+1 Falchion', 1, '2d4+1','4d4+2', '6d4+3');
+	makeRow('+1 Falchion [large]', 1, '2d6+2','4d6+4', '6d6+6');
+	makeRow('Bane', 2, '2d6+2','2d6+4','2d6+6');
+	makeRow('Favored Enemy [Demon]', 4, 4);
+	makeRow('Favored Enemy [other]', 2, 2);
+	makeRow('Haste', 1, 0);
+	makeRow('Smite Evil', 3, 7);
+	makeRow('Smite Evil [1st attack vs demon/undead]', 0, 7);
+	makeRow('Mythic Power Attack [2 handed]', -2, 9, 36, 54);
+	makeRow('Charging', 2, 0);
+	makeRow('Flanking', 2, 0);
+
+	//makeRow('', 0, 0,0);
+
+	makeBlankRow(['Total', '', '', '','', ''], 'totalRow');
+
+	toggle(1);
+	toggle(1);
+}
+function makeBlankRow(arr, id) {
+	var tr=document.createElement('tr');
+	tr.id=id;
+	var td;
+
+	var i;
+	for(i=0;i<arr.length;i++) {
+		td=document.createElement('td');
+		td.appendChild(document.createTextNode(arr[i]));
+		tr.appendChild(td);
+	}
+	tbdy.appendChild(tr);
+}
+function makeRow(name, att, dmg, cdmg,cdmg2) {
+	if(typeof cdmg === 'undefined'){
+		cdmg = 2*dmg;
+	}
+	if(typeof cdmg2 === 'undefined'){
+		cdmg2 = 3*dmg;
+	}
+
+	var tr=document.createElement('tr');
+	var td;
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode(name));
+	tr.appendChild(td);
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode(att));
+	tr.appendChild(td);
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode(dmg));
+	tr.appendChild(td);
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode(cdmg));
+	tr.appendChild(td);
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode(cdmg2));
+	tr.appendChild(td);
+
+	td=document.createElement('td');
+	td.appendChild(document.createTextNode('ON'));
+	tr.appendChild(td);
+
+	enabled[count]=true;
+	tr.setAttribute("onclick", "javascript:toggle("+count+");");
+	tr.style.background='lightgreen';
+
+	tbdy.appendChild(tr);
+	count++;
+}
+function toggle(num) {
+	var row = tbdy.childNodes[num];
+	enabled[num] = !enabled[num];
+	if(enabled[num]) {
+		row.style.background='LightGreen';
+		row.lastChild.firstChild.data='ON';
+	} else {
+		row.style.background='red';
+		row.lastChild.firstChild.data='OFF';
+	}
+	var i;
+	//update
+	var totAtt=0;
+	var totDmg='';
+	var totCDmg='';
+	var totC2Dmg='';
+	for(i=1;i<count;i++) {
+		if(enabled[i]) {
+			row = tbdy.childNodes[i];
+			totAtt += parseInt(row.childNodes[1].firstChild.data);
+			totDmg = addDamage(totDmg,row.childNodes[2].firstChild.data);
+			totCDmg = addDamage(totCDmg,row.childNodes[3].firstChild.data);
+			totC2Dmg = addDamage(totC2Dmg,row.childNodes[4].firstChild.data);
+		}
+	}
+	row = document.getElementById('totalRow');
+	row.childNodes[1].firstChild.data = '+'+totAtt;
+	row.childNodes[2].firstChild.data = totDmg;
+	row.childNodes[3].firstChild.data = totCDmg;
+	row.childNodes[4].firstChild.data = totC2Dmg;
+}
+function addDamage(a,b) {
+	var i;
+
+	var sum = parseDamage(a);
+	var resB = parseDamage(b);
+	for(i=0;i<resB.length;i++) {
+		if(resB[i]) {
+			if(!( i in sum)) {
+				sum[i]=resB[i];
+			} else {
+				sum[i] += resB[i];
+			}
+		}
+	}
+
+	var result='';
+	for(i=sum.length;i>0;i--) {
+		if(sum[i] && sum[i] != 0) {
+			if(result != '') {
+				result += '+';
+			}
+			result += sum[i]+"d"+i;
+		}
+	}
+	if(sum[0]) {
+		if(result) {
+			result += '+';
+		}
+		result += sum[0];
+	}
+	return result;
+}
+function parseDamage(a) {
+	var sum=[];
+	if(a == '') {
+		a=0;
+	}
+	if(isFinite(a)) {
+		sum[0]=parseInt(a);
+	} else {
+		var res = a.split('+');
+		var n;
+		var x;
+		for(i=0;i<res.length;i++) {
+			if(isFinite(res[i])) {
+				n=0;
+				x=parseInt(res[i]);
+			} else {
+				sp = res[i].split('d');
+				n=parseInt(sp[1]);
+				x=parseInt(sp[0]);
+			}
+			if(!( n in sum)) {
+				sum[n]=0;
+			}
+			sum[n]+=x;
+		}
+	}
+	return sum;
+}
+function calcAvgDmg(arr) {
+	if(typeof arr == 'string') {
+		arr = parseDamage(arr);
+	}
+	var i;
+	var total=0;
+	if(arr[0]) {
+		total+=arr[0];
+	}
+	for(i=1;i<arr.length;i++) {
+		if(arr[i]) {
+			total+= arr[i]*(i+1)/2.0;
+		}
+	}
+	return total;
+}
+</script>
+<style type="text/css">
+td {
+	padding-left:0.5em;
+	padding-right:0.5em;
+}
+</style>
+</head>
+<body onload="tableCreate()">
+<center>
+<h1>Attack Table: Van Dellisar, level 7</h1>
+
+<table id="bonusTable"></table>
+</center>
+
+</body>
